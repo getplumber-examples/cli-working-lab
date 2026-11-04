@@ -16,3 +16,4 @@ jobs:
           soft-fail: true
           upload-sarif: false
           upload-artifacts: false
+      - uses: actions/setup-node@v4
