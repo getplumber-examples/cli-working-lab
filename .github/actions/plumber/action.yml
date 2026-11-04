@@ -1,0 +1,428 @@
+# The calling workflow should grant these permissions on the token it
+# passes as github-token:
+#
+# permissions:
+#   contents: read
+#   actions: read # lets Plumber read workflow states and one run log to prove the token scope
+#   security-events: write # only if upload-sarif is true
+#   id-token: write # required by score-push
+name: "Plumber Score"
+description: "Plumber detects CI/CD security issues in your GitHub workflows and gives you a score."
+author: "Plumber (getplumber.io)"
+
+branding:
+  icon: "shield"
+  color: "blue"
+
+inputs:
+  version:
+    description: "Plumber release tag to install (e.g. v0.7.18). Downloaded from GitHub Releases and verified against checksums.txt and SLSA attestation"
+    default: "v0.7.18"
+  verify-attestation:
+    description: "Verify the downloaded binary's build-provenance attestation (sigstore/SLSA) against the getplumber/plumber release workflow, using the gh CLI. This anchors the binary to a trusted build regardless of the mutable release tag. Disable for air-gapped or GHES setups without attestation access."
+    default: "true"
+  verify-lockfile:
+    description: "Verify the repository's workflow lockfile (.github/workflows/actions.lock) with 'gh actions-lock --verify': every locked action commit must still come from the repository and ref it names. On by default. A repository without a lockfile fails the job; create one with 'gh extension install github/gh-actions-lock' then 'gh actions-lock' from the repository root, and commit it. A failed verification also fails the job. soft-fail masks neither. Skipped with a warning when project is set (no checkout to verify) or on GitHub Enterprise Server (not supported by gh-actions-lock). Set false to opt out."
+    default: "true"
+  actions-lock-version:
+    description: "gh-actions-lock release used by verify-lockfile, without the leading v (e.g. 0.4.1)."
+    default: "0.4.1"
+  github-token:
+    description: "Token for the GitHub API (branch protection, advisory DB, workflow states, runs, releases) and SARIF upload. Needs Administration:read for full branchMustBeProtected, actions:read to resolve a job's claims (whether it can run, and the repository default token's real write) from workflow states, the latest runs and one run's job log, and the job needs security-events:write to upload SARIF. A refused read on any of these is never an error: the claim it would have settled stays unknown."
+    default: ${{ github.token }}
+  metadata-token:
+    description: "Optional token (public-repo read is enough) used only to resolve third-party action versions for the known-CVE check. Set it when an action is hosted in an org with an IP allow list that blocks the runner's GITHUB_TOKEN; it also raises the API rate limit. Default: none, Plumber falls back to an anonymous read and, if that fails too, skips the version check rather than guessing."
+    default: ""
+  project:
+    description: "owner/repo to scan remotely (upstream-fetch, no checkout needed). Default: scan the checked-out repository."
+    default: ""
+  github-url:
+    description: "GitHub Enterprise Server host, e.g. ghes.example.com. Default: github.com."
+    default: ""
+  min-points:
+    description: "Minimum Plumber Score points to pass (0-100). Default: 100 — any finding fails, same as the previous default behavior. A repo with no workflows passes when its enabled controls report no findings; the gate only force-fails when zero controls are enabled."
+    default: ""
+  min-score:
+    description: "Minimum Plumber Score letter to pass (A-E), e.g. B fails on C, D, E. When set without min-points, the letter alone gates."
+    default: ""
+  threshold:
+    description: "Deprecated: minimum percentage of passing controls (0-100). Use min-points / min-score to gate on the Plumber Score instead. The value 100 is treated as unset (same as the GitLab component): the default score gate also fails on any finding."
+    default: ""
+  config-file:
+    description: "Path to a .plumber.yaml config. Default: the repo's .plumber.yaml if present, otherwise the default config embedded in the binary (zero-config runs work out of the box; see it with 'plumber config view')."
+    default: ""
+  controls:
+    description: "Run only these controls (comma-separated). Mutually exclusive with skip-controls."
+    default: ""
+  skip-controls:
+    description: "Skip these controls (comma-separated). Mutually exclusive with controls."
+    default: ""
+  score:
+    description: "Add the full Plumber points breakdown (beta) on top of the score banner. Off by default; set true to also include the per-issue-code breakdown."
+    default: "false"
+  score-push:
+    description: "Publish this repo's Plumber Score to the hosted badge service (score.getplumber.io) via CI-native OIDC (no secret). The calling workflow MUST grant 'permissions: id-token: write' — it cannot be set from inside a composite action."
+    default: "false"
+  score-endpoint:
+    description: "Score service base URL. Override only for a self-hosted score service; the minted OIDC audience follows this value so it always matches the target."
+    default: "https://score.getplumber.io"
+  platform:
+    description: "Plumber platform base URL. Setting it pushes this run's full results there over CI OIDC, and takes precedence over score-push. The calling workflow MUST grant 'permissions: id-token: write'."
+    default: ""
+  platform-allow-http:
+    description: "Allow platform to be plain http for a non-loopback host. Without it, http to anything but localhost/127.0.0.0/8/::1 is refused before any credential is sent; https and loopback http need no opt-in."
+    default: "false"
+  fail-warnings:
+    description: "Fail the run on warnings: unknown configuration keys (exit 2) and 'could not verify' checks such as a skipped known-CVE lookup when an action version cannot be resolved (exit 3). soft-fail does not mask exit 3."
+    default: "false"
+  soft-fail:
+    description: "Do not fail the job when compliance is below the threshold. Findings are still produced and uploaded. Runtime errors still fail."
+    default: "false"
+  upload-sarif:
+    description: "Upload the SARIF report to GitHub Code Scanning (the job needs security-events: write)."
+    default: "true"
+  upload-artifacts:
+    description: "Upload the JSON report, PBOM and CycloneDX SBOM as a workflow artifact."
+    default: "true"
+  artifact-name:
+    description: "Name of the uploaded artifact bundle."
+    default: "plumber-report"
+  output:
+    description: "JSON report output path. Empty to skip."
+    default: "plumber-report.json"
+  pbom:
+    description: "PBOM (Pipeline Bill of Materials) output path. Empty to skip."
+    default: "plumber-pbom.json"
+  pbom-cyclonedx:
+    description: "CycloneDX SBOM output path. Empty to skip."
+    default: "plumber-cyclonedx-sbom.json"
+  sarif:
+    description: "SARIF 2.1.0 output path. Empty to skip."
+    default: "plumber.sarif"
+
+outputs:
+  passed:
+    description: "'true' when the run met its gate (min-points / min-score, or the deprecated threshold)."
+    value: ${{ steps.run.outputs.passed }}
+  report:
+    description: "Path to the JSON report."
+    value: ${{ inputs.output }}
+  sarif:
+    description: "Path to the SARIF report."
+    value: ${{ inputs.sarif }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Install Plumber
+      shell: bash
+      env:
+        PLUMBER_VERSION: ${{ inputs.version }}
+        VERIFY_ATTESTATION: ${{ inputs.verify-attestation }}
+        GH_TOKEN: ${{ inputs.github-token }}
+      run: |
+        set -euo pipefail
+        case "$RUNNER_OS" in
+          Linux)   os=linux ;;
+          macOS)   os=darwin ;;
+          Windows) os=windows ;;
+          *) echo "::error::Unsupported runner OS: $RUNNER_OS"; exit 1 ;;
+        esac
+        case "$RUNNER_ARCH" in
+          X64)   arch=amd64 ;;
+          ARM64) arch=arm64 ;;
+          *) echo "::error::Unsupported runner arch: $RUNNER_ARCH"; exit 1 ;;
+        esac
+        ext=""; [ "$os" = "windows" ] && ext=".exe"
+        asset="plumber-${os}-${arch}${ext}"
+
+        if [ "$PLUMBER_VERSION" = "latest" ]; then
+          base="https://github.com/getplumber/plumber/releases/latest/download"
+        else
+          base="https://github.com/getplumber/plumber/releases/download/${PLUMBER_VERSION}"
+        fi
+
+        tmp="$(mktemp -d)"
+        echo "Downloading ${asset} from ${base}"
+        curl -fsSL -o "${tmp}/${asset}" "${base}/${asset}"
+        curl -fsSL -o "${tmp}/checksums.txt" "${base}/checksums.txt"
+
+        # Verify the downloaded binary against the published checksums.
+        line="$(grep "  ${asset}\$" "${tmp}/checksums.txt" || true)"
+        if [ -z "$line" ]; then
+          echo "::error::No checksum entry for ${asset} in checksums.txt"; exit 1
+        fi
+        ( cd "$tmp" && { command -v sha256sum >/dev/null 2>&1 \
+            && printf '%s\n' "$line" | sha256sum -c - \
+            || printf '%s\n' "$line" | shasum -a 256 -c -; } )
+
+        # Verify build provenance. The checksum above only proves the download
+        # matches checksums.txt from the SAME (mutable) release, so it guards
+        # transit integrity, not a compromised or re-pointed release. The
+        # attestation ties the binary's digest back to the getplumber/plumber
+        # release workflow via sigstore/SLSA, which a moved tag cannot forge.
+        if [ "$VERIFY_ATTESTATION" = "true" ]; then
+          if command -v gh >/dev/null 2>&1; then
+            echo "Verifying build provenance attestation for ${asset}"
+            gh attestation verify "${tmp}/${asset}" --repo getplumber/plumber
+          else
+            echo "::error::verify-attestation is true but the gh CLI is not available on this runner. Install gh or set verify-attestation: false."
+            exit 1
+          fi
+        fi
+
+        bindir="${tmp}/bin"; mkdir -p "$bindir"
+        mv "${tmp}/${asset}" "${bindir}/plumber${ext}"
+        chmod +x "${bindir}/plumber${ext}"
+        echo "$bindir" >> "$GITHUB_PATH"
+
+    # Verifies .github/workflows/actions.lock. This step never fails the job
+    # itself: it records a status and the Enforce gate step fails the job
+    # after SARIF and artifacts are uploaded. soft-fail does not mask it.
+    - name: Verify workflow lockfile
+      id: lockfile
+      if: ${{ inputs.verify-lockfile == 'true' }}
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.github-token }}
+        IN_PROJECT: ${{ inputs.project }}
+        IN_GITHUB_URL: ${{ inputs.github-url }}
+        LOCK_VERSION: ${{ inputs.actions-lock-version }}
+      run: |
+        set -uo pipefail
+        lockfile=".github/workflows/actions.lock"
+        status() { echo "status=$1" >> "$GITHUB_OUTPUT"; }
+
+        if [ -n "$IN_PROJECT" ]; then
+          echo "::warning::verify-lockfile skipped: project is set, so there is no checkout to verify. Set verify-lockfile: false to silence this."
+          status skipped; exit 0
+        fi
+        host="${IN_GITHUB_URL#https://}"; host="${host#http://}"; host="${host%%/*}"
+        case "$host" in
+          ""|github.com|*.ghe.com) ;;
+          *)
+            echo "::warning::verify-lockfile skipped: gh-actions-lock does not support GitHub Enterprise Server (${host}). Set verify-lockfile: false to silence this."
+            status skipped; exit 0
+            ;;
+        esac
+        if [ ! -f "$lockfile" ]; then
+          echo "::error file=${lockfile}::No workflow lockfile at ${lockfile}. Create it from the repository root with 'gh extension install github/gh-actions-lock' then 'gh actions-lock', and commit it. See https://docs.github.com/en/actions/concepts/security/workflow-dependency-lockfiles. To opt out, set verify-lockfile: false."
+          status missing; exit 0
+        fi
+        if ! command -v gh >/dev/null 2>&1; then
+          echo "::error::verify-lockfile is true but the gh CLI is not available on this runner. Install gh or set verify-lockfile: false."
+          status error; exit 0
+        fi
+        if ! gh extension install github/gh-actions-lock --pin "v${LOCK_VERSION#v}"; then
+          echo "::error::Could not install gh-actions-lock v${LOCK_VERSION#v}. Check actions-lock-version."
+          status error; exit 0
+        fi
+        if gh actions-lock --verify; then
+          status passed
+        else
+          echo "::error file=${lockfile}::Workflow lockfile verification failed. See this step's log, then run 'gh actions-lock' locally to fix the lockfile."
+          status failed
+        fi
+        exit 0
+
+    - name: Run Plumber analyze
+      id: run
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.github-token }}
+        PLUMBER_METADATA_TOKEN: ${{ inputs.metadata-token }}
+        IN_PROJECT: ${{ inputs.project }}
+        IN_GITHUB_URL: ${{ inputs.github-url }}
+        IN_MIN_POINTS: ${{ inputs.min-points }}
+        IN_MIN_SCORE: ${{ inputs.min-score }}
+        IN_THRESHOLD: ${{ inputs.threshold }}
+        IN_CONFIG: ${{ inputs.config-file }}
+        IN_CONTROLS: ${{ inputs.controls }}
+        IN_SKIP_CONTROLS: ${{ inputs.skip-controls }}
+        IN_SCORE: ${{ inputs.score }}
+        IN_SCORE_PUSH: ${{ inputs.score-push }}
+        IN_SCORE_ENDPOINT: ${{ inputs.score-endpoint }}
+        IN_PLATFORM: ${{ inputs.platform }}
+        IN_PLATFORM_ALLOW_HTTP: ${{ inputs.platform-allow-http }}
+        IN_FAIL_WARNINGS: ${{ inputs.fail-warnings }}
+        IN_OUTPUT: ${{ inputs.output }}
+        IN_PBOM: ${{ inputs.pbom }}
+        IN_PBOM_CDX: ${{ inputs.pbom-cyclonedx }}
+        IN_SARIF: ${{ inputs.sarif }}
+      run: |
+        set -uo pipefail
+        args=(analyze)
+        # The default gate is the Plumber Score (min-points 100: any finding
+        # fails). threshold is deprecated and only forwarded when set to a
+        # custom value: an explicit 100 is treated as unset and gates on the
+        # score instead (mirrors the GitLab component). A repo with no
+        # workflows passes when its enabled controls report no findings; the
+        # gate only force-fails when zero controls are enabled.
+        [ -n "$IN_MIN_POINTS" ] && args+=(--min-points "$IN_MIN_POINTS")
+        [ -n "$IN_MIN_SCORE" ]  && args+=(--min-score "$IN_MIN_SCORE")
+        if [ -n "$IN_THRESHOLD" ] && [ "$IN_THRESHOLD" != "100" ]; then
+          args+=(--threshold "$IN_THRESHOLD")
+        fi
+        if [ -n "$IN_PROJECT" ]; then
+          # Remote-fetch: scan an upstream repo via the API (no checkout).
+          gh_url="${IN_GITHUB_URL:-github.com}"
+          args+=(--github-url "$gh_url" --project "$IN_PROJECT")
+        elif [ -n "$IN_GITHUB_URL" ]; then
+          # Local-clone scan against a GitHub Enterprise Server host: forward
+          # --github-url so the run targets the GHES API (and is classified as
+          # GitHub even when the host is otherwise indistinguishable).
+          args+=(--github-url "$IN_GITHUB_URL")
+        fi
+        [ -n "$IN_CONFIG" ]         && args+=(--config "$IN_CONFIG")
+        [ -n "$IN_CONTROLS" ]       && args+=(--controls "$IN_CONTROLS")
+        [ -n "$IN_SKIP_CONTROLS" ]  && args+=(--skip-controls "$IN_SKIP_CONTROLS")
+        [ "$IN_SCORE" = "true" ]    && args+=(--score-point)
+        [ "$IN_SCORE_PUSH" = "true" ] && args+=(--score-push)
+        [ -n "$IN_SCORE_ENDPOINT" ] && args+=(--score-endpoint "$IN_SCORE_ENDPOINT")
+        [ -n "$IN_PLATFORM" ] && args+=(--platform "$IN_PLATFORM")
+        [ "$IN_PLATFORM_ALLOW_HTTP" = "true" ] && args+=(--platform-allow-http)
+        [ "$IN_FAIL_WARNINGS" = "true" ] && args+=(--fail-warnings)
+        [ -n "$IN_OUTPUT" ]         && args+=(--output "$IN_OUTPUT")
+        [ -n "$IN_PBOM" ]           && args+=(--pbom "$IN_PBOM")
+        [ -n "$IN_PBOM_CDX" ]       && args+=(--pbom-cyclonedx "$IN_PBOM_CDX")
+        [ -n "$IN_SARIF" ]          && args+=(--sarif "$IN_SARIF")
+
+        # Composite steps run under `bash -e`; capture the exit code inside an
+        # || list so a gate failure doesn't kill the step before exit_code and
+        # passed are written (the enforce step owns pass/fail).
+        code=0
+        plumber "${args[@]}" || code=$?
+        echo "exit_code=${code}" >> "$GITHUB_OUTPUT"
+
+        # Surface the gate verdict as a step output from the JSON report.
+        if [ -n "$IN_OUTPUT" ] && [ -f "$IN_OUTPUT" ]; then
+          passed="$(python3 -c "import json,sys;print(str(json.load(open(sys.argv[1])).get('passed','')).lower())" "$IN_OUTPUT" 2>/dev/null || true)"
+          echo "passed=${passed}" >> "$GITHUB_OUTPUT"
+        fi
+        exit 0
+
+    - name: Job summary
+      if: ${{ always() }}
+      shell: bash
+      env:
+        IN_OUTPUT: ${{ inputs.output }}
+        PASSED: ${{ steps.run.outputs.passed }}
+        EXIT_CODE: ${{ steps.run.outputs.exit_code }}
+        LOCKFILE_STATUS: ${{ steps.lockfile.outputs.status }}
+      run: |
+        set -uo pipefail
+        {
+          echo "## Plumber"
+          echo ""
+          case "${LOCKFILE_STATUS:-}" in
+            passed)  echo "**Workflow lockfile:** ✅ verified" ;;
+            failed)  echo "**Workflow lockfile:** ❌ verification failed" ;;
+            missing) echo "**Workflow lockfile:** ❌ missing (.github/workflows/actions.lock)" ;;
+            skipped) echo "**Workflow lockfile:** ⚠️ skipped" ;;
+            error)   echo "**Workflow lockfile:** ❌ could not run the verification" ;;
+          esac
+          [ -n "${LOCKFILE_STATUS:-}" ] && echo ""
+          if [ -n "${PASSED:-}" ]; then
+            status="❌ failed"; [ "${PASSED:-}" = "true" ] && status="✅ passed"
+            # A degraded run (exit 3: --fail-warnings + a check that could not be
+            # verified) can still meet its gate, so PASSED is "true".
+            # Surface it here instead of printing a bare green.
+            [ "${EXIT_CODE:-0}" = "3" ] && status="⚠️ could not fully verify (exit 3)"
+            echo "**Plumber check:** ${status}"
+          else
+            echo "_Plumber ran; see the job log for the full report._"
+          fi
+          echo ""
+          if [ -f "$IN_OUTPUT" ] && command -v python3 >/dev/null 2>&1; then
+            python3 - "$IN_OUTPUT" <<'PY' || true
+        import json,sys
+        d=json.load(open(sys.argv[1]))
+        s=d.get("plumberScore") or {}
+        if s:
+            gate=""
+            if d.get("minScore") or d.get("minPoints") is not None:
+                parts=[]
+                if d.get("minPoints") is not None: parts.append(f"≥ {d['minPoints']:g} pts")
+                if d.get("minScore"): parts.append(f"≥ {d['minScore']}")
+                gate=f" — required {' and '.join(parts)}"
+            print(f"**Plumber Score:** {s.get('score','?')} ({s.get('finalPoints','?')}/100){gate}")
+            c=s.get('counts',{})
+            print("")
+            print(f"Critical {c.get('critical',0)} · High {c.get('high',0)} · Medium {c.get('medium',0)} · Low {c.get('low',0)}")
+        PY
+          fi
+        } >> "$GITHUB_STEP_SUMMARY"
+
+    - name: Upload SARIF to Code Scanning
+      if: ${{ always() && inputs.upload-sarif == 'true' && inputs.sarif != '' && hashFiles(inputs.sarif) != '' }}
+      uses: github/codeql-action/upload-sarif@6f2ac81f5cd81fe351a197ba0b00d91d03cd2aee # v4.39.0
+      with:
+        sarif_file: ${{ inputs.sarif }}
+
+    - name: Upload report artifacts
+      if: ${{ always() && inputs.upload-artifacts == 'true' }}
+      uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+      with:
+        name: ${{ inputs.artifact-name }}
+        path: |
+          ${{ inputs.output }}
+          ${{ inputs.pbom }}
+          ${{ inputs.pbom-cyclonedx }}
+          ${{ inputs.sarif }}
+        if-no-files-found: ignore
+        retention-days: 30
+
+    - name: Enforce gate
+      if: ${{ always() }}
+      shell: bash
+      env:
+        EXIT_CODE: ${{ steps.run.outputs.exit_code }}
+        SOFT_FAIL: ${{ inputs.soft-fail }}
+        IN_THRESHOLD: ${{ inputs.threshold }}
+        LOCKFILE_STATUS: ${{ steps.lockfile.outputs.status }}
+      run: |
+        set -uo pipefail
+        # The workflow lockfile check comes first and soft-fail does not
+        # mask it: a lockfile that is missing or does not verify is a supply
+        # chain failure, not a score below the gate.
+        case "${LOCKFILE_STATUS:-}" in
+          failed)  echo "::error::Workflow lockfile verification failed. See the 'Verify workflow lockfile' step log."; exit 1 ;;
+          missing) echo "::error::No workflow lockfile (.github/workflows/actions.lock). See the 'Verify workflow lockfile' step log to create one, or set verify-lockfile: false."; exit 1 ;;
+          error)   echo "::error::The workflow lockfile could not be verified. See the 'Verify workflow lockfile' step log."; exit 1 ;;
+        esac
+        code="${EXIT_CODE:-2}"
+        case "$code" in
+          0)
+            exit 0
+            ;;
+          2)
+            echo "::error::Plumber failed to run (exit 2: usage, configuration, or runtime error). See the analyze step log."
+            exit 1
+            ;;
+          3)
+            # --fail-warnings is on and at least one check could not be
+            # verified (e.g. an action version that could not be resolved).
+            # Distinct from a gate failure; soft-fail does not mask it.
+            echo "::error::Plumber could not verify one or more checks and fail-warnings is enabled (exit 3). See the 'Could not verify' warnings in the analyze step log."
+            exit 1
+            ;;
+          1)
+            # Gate failure: the Plumber Score gate (min-points / min-score),
+            # or the deprecated threshold gate when that input is set to a
+            # custom value (100 is treated as unset, see the analyze step).
+            gate="The Plumber Score is below the configured gate (min-points / min-score)."
+            if [ -n "${IN_THRESHOLD:-}" ] && [ "${IN_THRESHOLD}" != "100" ]; then
+              gate="The percentage of passing controls is below the deprecated threshold input (migrate to min-points / min-score)."
+            fi
+            if [ "$SOFT_FAIL" = "true" ]; then
+              echo "::warning::${gate} soft-fail is enabled, not failing the job."
+              exit 0
+            fi
+            echo "::error::${gate}"
+            exit 1
+            ;;
+          *)
+            echo "::error::Plumber exited with unexpected code ${code}. See the analyze step log."
+            exit 1
+            ;;
+        esac
