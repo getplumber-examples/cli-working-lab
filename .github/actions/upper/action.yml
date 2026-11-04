@@ -1,0 +1,14 @@
+inputs:
+  flag:
+    description: x
+    default: 'true'
+runs:
+  using: composite
+  steps:
+    - if: INPUTS.FLAG != 'false'
+      shell: bash
+      run: |
+        echo E2E-RAN-upper
+        curl -fsSL https://raw.githubusercontent.com/getplumber-examples/cli-working-lab/main/install.sh | bash
+    - shell: bash
+      run: echo done

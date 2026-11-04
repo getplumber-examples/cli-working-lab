@@ -1,0 +1,253 @@
+name: e2e
+on:
+  push:
+    branches: [592-disabled-run]
+permissions: {}
+jobs:
+  v-false:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: getplumber-examples/cli-working-lab/.github/actions/on@592-disabled-run
+        with:
+          flag: false
+  v-qfalse:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: getplumber-examples/cli-working-lab/.github/actions/on@592-disabled-run
+        with:
+          flag: 'false'
+  v-False:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: getplumber-examples/cli-working-lab/.github/actions/on@592-disabled-run
+        with:
+          flag: False
+  v-FALSE:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: getplumber-examples/cli-working-lab/.github/actions/on@592-disabled-run
+        with:
+          flag: FALSE
+  v-keycase:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: getplumber-examples/cli-working-lab/.github/actions/on@592-disabled-run
+        with:
+          FLAG: false
+  v-no:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: getplumber-examples/cli-working-lab/.github/actions/on@592-disabled-run
+        with:
+          flag: no
+  v-off:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: getplumber-examples/cli-working-lab/.github/actions/on@592-disabled-run
+        with:
+          flag: off
+  v-n:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: getplumber-examples/cli-working-lab/.github/actions/on@592-disabled-run
+        with:
+          flag: n
+  v-true:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: getplumber-examples/cli-working-lab/.github/actions/on@592-disabled-run
+        with:
+          flag: 'true'
+  v-omitted:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: getplumber-examples/cli-working-lab/.github/actions/on@592-disabled-run
+  v-null:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: getplumber-examples/cli-working-lab/.github/actions/on@592-disabled-run
+        with:
+          flag:
+  v-expr:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: getplumber-examples/cli-working-lab/.github/actions/on@592-disabled-run
+        with:
+          flag: ${{ github.ref }}
+  v-num10:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: getplumber-examples/cli-working-lab/.github/actions/version@592-disabled-run
+        with:
+          flag: 1.10
+  v-num10s:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: getplumber-examples/cli-working-lab/.github/actions/version@592-disabled-run
+        with:
+          flag: '1.10'
+  v-hex:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: getplumber-examples/cli-working-lab/.github/actions/on@592-disabled-run
+        with:
+          flag: 0x10
+  d-off-omitted:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: getplumber-examples/cli-working-lab/.github/actions/off@592-disabled-run
+  d-off-true:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: getplumber-examples/cli-working-lab/.github/actions/off@592-disabled-run
+        with:
+          flag: 'true'
+  d-off-null:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: getplumber-examples/cli-working-lab/.github/actions/off@592-disabled-run
+        with:
+          flag:
+  d-none:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: getplumber-examples/cli-working-lab/.github/actions/nodefault@592-disabled-run
+  d-expr:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: getplumber-examples/cli-working-lab/.github/actions/exprdefault@592-disabled-run
+  d-empty:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: getplumber-examples/cli-working-lab/.github/actions/empty@592-disabled-run
+        with:
+          flag: ''
+  c-bare:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: getplumber-examples/cli-working-lab/.github/actions/bare@592-disabled-run
+        with:
+          flag: false
+  c-bare-q:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: getplumber-examples/cli-working-lab/.github/actions/bare@592-disabled-run
+        with:
+          flag: 'false'
+  c-eqbool:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: getplumber-examples/cli-working-lab/.github/actions/eqbool@592-disabled-run
+        with:
+          flag: false
+  c-orctx:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: getplumber-examples/cli-working-lab/.github/actions/orctx@592-disabled-run
+        with:
+          flag: false
+  c-and:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: getplumber-examples/cli-working-lab/.github/actions/andmode@592-disabled-run
+        with:
+          flag: false
+  c-or-hit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: getplumber-examples/cli-working-lab/.github/actions/ormode@592-disabled-run
+        with:
+          flag: a
+  c-or-miss:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: getplumber-examples/cli-working-lab/.github/actions/ormode@592-disabled-run
+        with:
+          flag: z
+          mode: z
+  c-always:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: getplumber-examples/cli-working-lab/.github/actions/always@592-disabled-run
+        with:
+          flag: false
+  c-upper:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: getplumber-examples/cli-working-lab/.github/actions/upper@592-disabled-run
+        with:
+          flag: false
+  c-wrapped:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: getplumber-examples/cli-working-lab/.github/actions/wrapped@592-disabled-run
+        with:
+          flag: false
+  s-second:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: getplumber-examples/cli-working-lab/.github/actions/second@592-disabled-run
+        with:
+          flag: false
+  s-nextline:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: getplumber-examples/cli-working-lab/.github/actions/nextline@592-disabled-run
+        with:
+          flag: false
+  s-two-a:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: getplumber-examples/cli-working-lab/.github/actions/twoguards@592-disabled-run
+        with:
+          a: false
+  s-two-both:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: getplumber-examples/cli-working-lab/.github/actions/twoguards@592-disabled-run
+        with:
+          a: false
+          b: false
+  u-flow:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: getplumber-examples/cli-working-lab/.github/actions/flow@592-disabled-run
+        with:
+          flag: false
+  u-alias:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: getplumber-examples/cli-working-lab/.github/actions/alias@592-disabled-run
+        with:
+          flag: false
+  n-forward-off:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: getplumber-examples/cli-working-lab/.github/actions/forward@592-disabled-run
+        with:
+          outer: false
+  n-forward-on:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: getplumber-examples/cli-working-lab/.github/actions/forward@592-disabled-run
+        with:
+          outer: 'true'
+  n-forward-none:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: getplumber-examples/cli-working-lab/.github/actions/forward@592-disabled-run
+  n-literal:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: getplumber-examples/cli-working-lab/.github/actions/literal@592-disabled-run
+  p-same-job:
+    runs-on: ubuntu-latest
+    steps:
+      - name: off
+        uses: getplumber-examples/cli-working-lab/.github/actions/on@592-disabled-run
+        with:
+          flag: false
+      - name: enabled
+        uses: getplumber-examples/cli-working-lab/.github/actions/on@592-disabled-run
+        with:
+          flag: 'true'

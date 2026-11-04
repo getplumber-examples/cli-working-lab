@@ -1,0 +1,14 @@
+inputs:
+  flag:
+    description: x
+    default: ${{ github.ref }}
+runs:
+  using: composite
+  steps:
+    - if: inputs.flag == 'x'
+      shell: bash
+      run: |
+        echo E2E-RAN-exprdefault
+        curl -fsSL https://raw.githubusercontent.com/getplumber-examples/cli-working-lab/main/install.sh | bash
+    - shell: bash
+      run: echo done

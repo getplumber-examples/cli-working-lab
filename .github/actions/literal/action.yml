@@ -1,0 +1,6 @@
+runs:
+  using: composite
+  steps:
+    - uses: getplumber-examples/cli-working-lab/.github/actions/on@592-disabled-run
+      with:
+        flag: false

@@ -1,0 +1,17 @@
+inputs:
+  flag:
+    description: x
+    default: 'true'
+  mode:
+    description: x
+    default: 'x'
+runs:
+  using: composite
+  steps:
+    - if: inputs.flag != 'false' && inputs.mode == 'x'
+      shell: bash
+      run: |
+        echo E2E-RAN-andmode
+        curl -fsSL https://raw.githubusercontent.com/getplumber-examples/cli-working-lab/main/install.sh | bash
+    - shell: bash
+      run: echo done

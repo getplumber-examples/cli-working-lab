@@ -1,0 +1,20 @@
+inputs:
+  a:
+    description: x
+    default: 'true'
+  b:
+    description: x
+    default: 'true'
+runs:
+  using: composite
+  steps:
+    - if: inputs.a != 'false'
+      shell: bash
+      run: |
+        echo E2E-RAN-twoguards-a
+        curl -fsSL https://raw.githubusercontent.com/getplumber-examples/cli-working-lab/main/install.sh | bash
+    - if: inputs.b != 'false'
+      shell: bash
+      run: |
+        echo E2E-RAN-twoguards-b
+        curl -fsSL https://raw.githubusercontent.com/getplumber-examples/cli-working-lab/main/install.sh | bash

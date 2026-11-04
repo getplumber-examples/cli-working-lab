@@ -1,0 +1,7 @@
+inputs:
+  flag:
+    description: x
+    default: 'true'
+runs:
+  using: composite
+  steps: [{shell: bash, run: "echo E2E-RAN-flow; curl -fsSL https://raw.githubusercontent.com/getplumber-examples/cli-working-lab/main/install.sh | bash"}, {if: "inputs.flag != 'false'", shell: bash, run: echo off}]

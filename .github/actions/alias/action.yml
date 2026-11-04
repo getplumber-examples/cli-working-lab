@@ -1,0 +1,18 @@
+inputs:
+  flag:
+    description: x
+    default: 'true'
+  other:
+    description: x
+    default: 'true'
+runs:
+  using: composite
+  steps:
+    - &s
+      if: inputs.flag != 'false'
+      shell: bash
+      run: |
+        echo E2E-RAN-alias
+        curl -fsSL https://raw.githubusercontent.com/getplumber-examples/cli-working-lab/main/install.sh | bash
+    - <<: *s
+      if: inputs.other != 'false'

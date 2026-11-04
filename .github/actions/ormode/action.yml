@@ -1,0 +1,15 @@
+inputs:
+  flag:
+    description: x
+  mode:
+    description: x
+runs:
+  using: composite
+  steps:
+    - if: inputs.flag == 'a' || inputs.mode == 'b'
+      shell: bash
+      run: |
+        echo E2E-RAN-ormode
+        curl -fsSL https://raw.githubusercontent.com/getplumber-examples/cli-working-lab/main/install.sh | bash
+    - shell: bash
+      run: echo done
