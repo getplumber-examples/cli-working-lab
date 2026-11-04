@@ -16,13 +16,13 @@ jobs:
       - uses: getplumber-examples/cli-working-lab/.github/actions/on@592-disabled-run
         with:
           flag: 'false'
-  v-False:
+  v-capitalized:
     runs-on: ubuntu-latest
     steps:
       - uses: getplumber-examples/cli-working-lab/.github/actions/on@592-disabled-run
         with:
           flag: False
-  v-FALSE:
+  v-uppercase:
     runs-on: ubuntu-latest
     steps:
       - uses: getplumber-examples/cli-working-lab/.github/actions/on@592-disabled-run
