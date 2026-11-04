@@ -5,7 +5,7 @@ version: 'v0.0.3'
 workflows:
     '.github/workflows/plumber.yml':
         - 'actions/checkout@v6.0.2'
-        - 'getplumber-examples/cli-working-lab@590-action'
+        - 'getplumber-examples/cli-working-lab@590-warn-action'
 dependencies:
     'actions/checkout@v6.0.2':
         ref: 'v6.0.2'
@@ -17,9 +17,9 @@ dependencies:
         commit: 'sha1-cf430e030ddbb5b0abf93d22962f4752f3646cd9'
         owner_id: 44036562
         repo_id: 192625955
-    'getplumber-examples/cli-working-lab@590-action':
-        ref: '590-action'
-        commit: 'sha1-46649a7fcea4634cebc106bfdfa9563c6ac5e547'
+    'getplumber-examples/cli-working-lab@590-warn-action':
+        ref: '590-warn-action'
+        commit: 'sha1-591319936520d1837c51d4369ac6258a83be1c8c'
         owner_id: 293806732
         repo_id: 1445686327
         uses:
