@@ -16,3 +16,4 @@ jobs:
           soft-fail: true
           upload-sarif: false
           upload-artifacts: false
+          actions-lock-version: 9.9.9
