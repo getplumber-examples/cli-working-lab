@@ -1,0 +1,14 @@
+name: gate
+description: lab fixture for plumber issue 591
+inputs:
+  flag:
+    description: x
+    default: 'true'
+  mode:
+    description: x
+    default: 'x'
+runs:
+  using: composite
+  steps:
+    - if: inputs.flag == 'a' || inputs.mode == 'b'
+      uses: actions/checkout@v4

@@ -1,0 +1,206 @@
+name: nested-inputs
+on:
+  push:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  c01-bool-false:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: getplumber-examples/cli-working-lab/.github/actions/ne@591-nested-inputs
+        with:
+          flag: false
+  c02-quoted-false:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: getplumber-examples/cli-working-lab/.github/actions/ne@591-nested-inputs
+        with:
+          flag: 'false'
+  c03-cap-false:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: getplumber-examples/cli-working-lab/.github/actions/ne@591-nested-inputs
+        with:
+          flag: False
+  c04-upper-false:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: getplumber-examples/cli-working-lab/.github/actions/ne@591-nested-inputs
+        with:
+          flag: FALSE
+  c05-upper-key:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: getplumber-examples/cli-working-lab/.github/actions/ne@591-nested-inputs
+        with:
+          FLAG: false
+  c06-no:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: getplumber-examples/cli-working-lab/.github/actions/ne@591-nested-inputs
+        with:
+          flag: no
+  c07-off:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: getplumber-examples/cli-working-lab/.github/actions/ne@591-nested-inputs
+        with:
+          flag: off
+  c08-n:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: getplumber-examples/cli-working-lab/.github/actions/ne@591-nested-inputs
+        with:
+          flag: n
+  c09-true:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: getplumber-examples/cli-working-lab/.github/actions/ne@591-nested-inputs
+        with:
+          flag: 'true'
+  c10-omitted:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: getplumber-examples/cli-working-lab/.github/actions/ne@591-nested-inputs
+  c11-null:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: getplumber-examples/cli-working-lab/.github/actions/ne@591-nested-inputs
+        with:
+          flag:
+  c12-expression:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: getplumber-examples/cli-working-lab/.github/actions/ne@591-nested-inputs
+        with:
+          flag: ${{ github.ref }}
+  c13-default-false:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: getplumber-examples/cli-working-lab/.github/actions/ne-default-false@591-nested-inputs
+  c14-default-false-enabled:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: getplumber-examples/cli-working-lab/.github/actions/ne-default-false@591-nested-inputs
+        with:
+          flag: 'true'
+  c15-default-false-null:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: getplumber-examples/cli-working-lab/.github/actions/ne-default-false@591-nested-inputs
+        with:
+          flag:
+  c16-default-expression:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: getplumber-examples/cli-working-lab/.github/actions/eq-default-expr@591-nested-inputs
+  c17-no-default:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: getplumber-examples/cli-working-lab/.github/actions/ne-no-default@591-nested-inputs
+  c18-empty-string:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: getplumber-examples/cli-working-lab/.github/actions/ne-empty@591-nested-inputs
+        with:
+          flag: ''
+  c19-bare-bool:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: getplumber-examples/cli-working-lab/.github/actions/bare@591-nested-inputs
+        with:
+          flag: false
+  c20-bare-string:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: getplumber-examples/cli-working-lab/.github/actions/bare@591-nested-inputs
+        with:
+          flag: 'false'
+  c21-eq-bool-bool:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: getplumber-examples/cli-working-lab/.github/actions/eq-bool@591-nested-inputs
+        with:
+          flag: false
+  c22-eq-bool-string:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: getplumber-examples/cli-working-lab/.github/actions/eq-bool@591-nested-inputs
+        with:
+          flag: 'false'
+  c23-or-context:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: getplumber-examples/cli-working-lab/.github/actions/or-context@591-nested-inputs
+        with:
+          flag: false
+  c24-and-literals:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: getplumber-examples/cli-working-lab/.github/actions/and-literals@591-nested-inputs
+        with:
+          flag: false
+  c25-or-literals-true:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: getplumber-examples/cli-working-lab/.github/actions/or-literals@591-nested-inputs
+        with:
+          flag: a
+  c26-or-literals-false:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: getplumber-examples/cli-working-lab/.github/actions/or-literals@591-nested-inputs
+        with:
+          flag: z
+          mode: z
+  c27-or-always:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: getplumber-examples/cli-working-lab/.github/actions/or-always@591-nested-inputs
+        with:
+          flag: false
+  c28-number-1-10:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: getplumber-examples/cli-working-lab/.github/actions/ne-1-10@591-nested-inputs
+        with:
+          flag: 1.10
+  c29-number-1-0:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: getplumber-examples/cli-working-lab/.github/actions/ne-1-0@591-nested-inputs
+        with:
+          flag: 1.0
+  c30-number-hex:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: getplumber-examples/cli-working-lab/.github/actions/ne-hex@591-nested-inputs
+        with:
+          flag: 0x10
+  c31-upper-condition:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: getplumber-examples/cli-working-lab/.github/actions/upper@591-nested-inputs
+        with:
+          flag: false
+  c32-forward-false:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: getplumber-examples/cli-working-lab/.github/actions/forward@591-nested-inputs
+        with:
+          outer: false
+  c33-forward-true:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: getplumber-examples/cli-working-lab/.github/actions/forward@591-nested-inputs
+        with:
+          outer: 'true'
+  c34-forward-omitted:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: getplumber-examples/cli-working-lab/.github/actions/forward@591-nested-inputs
+  c35-forward-literal:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: getplumber-examples/cli-working-lab/.github/actions/forward-literal@591-nested-inputs
