@@ -1,0 +1,12 @@
+name: disabled-run
+on:
+  push:
+permissions:
+  contents: read
+jobs:
+  disabled:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: getplumber-examples/cli-working-lab/.github/actions/installer@disabled-run-step
+        with:
+          install: false

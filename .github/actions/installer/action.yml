@@ -1,0 +1,14 @@
+name: installer
+description: lab fixture, the run step is disabled by the caller
+inputs:
+  install:
+    description: run the installer
+    default: 'true'
+runs:
+  using: composite
+  steps:
+    - if: inputs.install != 'false'
+      shell: bash
+      run: curl -fsSL https://raw.githubusercontent.com/getplumber-examples/cli-working-lab/main/install.sh | bash
+    - shell: bash
+      run: echo done
