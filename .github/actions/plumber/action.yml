@@ -22,7 +22,7 @@ inputs:
     description: "Verify the downloaded binary's build-provenance attestation (sigstore/SLSA) against the getplumber/plumber release workflow, using the gh CLI. This anchors the binary to a trusted build regardless of the mutable release tag. Disable for air-gapped or GHES setups without attestation access."
     default: "true"
   verify-lockfile:
-    description: "Verify the repository's workflow lockfile (.github/workflows/actions.lock) with 'gh actions-lock --verify': every locked action commit must still come from the repository and ref it names. On by default. A repository without a lockfile fails the job; create one with 'gh extension install github/gh-actions-lock' then 'gh actions-lock' from the repository root, and commit it. A failed verification also fails the job. soft-fail masks neither. Skipped with a warning when project is set (no checkout to verify) or on GitHub Enterprise Server (not supported by gh-actions-lock). Set false to opt out."
+    description: "Verify the repository's workflow lockfile (.github/workflows/actions.lock) with 'gh actions-lock --verify': every locked action commit must still come from the repository and ref it names. On by default. A repository without a lockfile gets a warning and the job continues; create one with 'gh extension install github/gh-actions-lock' then 'gh actions-lock' from the repository root, and commit it. A failed verification fails the job, and soft-fail does not mask it. Skipped with a warning when project is set (no checkout to verify) or on GitHub Enterprise Server (not supported by gh-actions-lock). Set false to opt out."
     default: "true"
   actions-lock-version:
     description: "gh-actions-lock release used by verify-lockfile, without the leading v (e.g. 0.4.1)."
@@ -176,9 +176,10 @@ runs:
         chmod +x "${bindir}/plumber${ext}"
         echo "$bindir" >> "$GITHUB_PATH"
 
-    # Verifies .github/workflows/actions.lock. This step never fails the job
-    # itself: it records a status and the Enforce gate step fails the job
-    # after SARIF and artifacts are uploaded. soft-fail does not mask it.
+    # Verifies .github/workflows/actions.lock. A missing lockfile only warns.
+    # This step never fails the job itself: it records a status and the
+    # Enforce gate step fails the job on a failed verification, after SARIF
+    # and artifacts are uploaded. soft-fail does not mask that.
     - name: Verify workflow lockfile
       id: lockfile
       if: ${{ inputs.verify-lockfile == 'true' }}
@@ -206,7 +207,7 @@ runs:
             ;;
         esac
         if [ ! -f "$lockfile" ]; then
-          echo "::error file=${lockfile}::No workflow lockfile at ${lockfile}. Create it from the repository root with 'gh extension install github/gh-actions-lock' then 'gh actions-lock', and commit it. See https://docs.github.com/en/actions/concepts/security/workflow-dependency-lockfiles. To opt out, set verify-lockfile: false."
+          echo "::warning file=${lockfile}::No workflow lockfile at ${lockfile}. Create it from the repository root with 'gh extension install github/gh-actions-lock' then 'gh actions-lock', and commit it. See https://docs.github.com/en/actions/concepts/security/workflow-dependency-lockfiles. To opt out, set verify-lockfile: false."
           status missing; exit 0
         fi
         if ! command -v gh >/dev/null 2>&1; then
@@ -317,7 +318,7 @@ runs:
           case "${LOCKFILE_STATUS:-}" in
             passed)  echo "**Workflow lockfile:** ✅ verified" ;;
             failed)  echo "**Workflow lockfile:** ❌ verification failed" ;;
-            missing) echo "**Workflow lockfile:** ❌ missing (.github/workflows/actions.lock)" ;;
+            missing) echo "**Workflow lockfile:** ⚠️ missing (.github/workflows/actions.lock)" ;;
             skipped) echo "**Workflow lockfile:** ⚠️ skipped" ;;
             error)   echo "**Workflow lockfile:** ❌ could not run the verification" ;;
           esac
@@ -383,12 +384,12 @@ runs:
       run: |
         set -uo pipefail
         # The workflow lockfile check comes first and soft-fail does not
-        # mask it: a lockfile that is missing or does not verify is a supply
-        # chain failure, not a score below the gate.
+        # mask it: a lockfile that does not verify, or could not be
+        # checked, is a supply chain failure, not a score below the gate.
+        # A missing lockfile only warns, in the Verify workflow lockfile step.
         case "${LOCKFILE_STATUS:-}" in
-          failed)  echo "::error::Workflow lockfile verification failed. See the 'Verify workflow lockfile' step log."; exit 1 ;;
-          missing) echo "::error::No workflow lockfile (.github/workflows/actions.lock). See the 'Verify workflow lockfile' step log to create one, or set verify-lockfile: false."; exit 1 ;;
-          error)   echo "::error::The workflow lockfile could not be verified. See the 'Verify workflow lockfile' step log."; exit 1 ;;
+          failed) echo "::error::Workflow lockfile verification failed. See the 'Verify workflow lockfile' step log."; exit 1 ;;
+          error)  echo "::error::The workflow lockfile could not be verified. See the 'Verify workflow lockfile' step log."; exit 1 ;;
         esac
         code="${EXIT_CODE:-2}"
         case "$code" in
