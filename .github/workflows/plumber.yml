@@ -1,0 +1,18 @@
+name: plumber-590
+on:
+  push:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  plumber:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6.0.2
+        with:
+          persist-credentials: false
+      - uses: getplumber-examples/cli-working-lab/.github/actions/plumber@590-action
+        with:
+          soft-fail: true
+          upload-sarif: false
+          upload-artifacts: false
