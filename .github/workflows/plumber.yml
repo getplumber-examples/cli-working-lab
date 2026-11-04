@@ -11,8 +11,9 @@ jobs:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
-      - uses: getplumber-examples/cli-working-lab/.github/actions/plumber@590-action
+      - uses: getplumber-examples/cli-working-lab/.github/actions/plumber@590-warn-action
         with:
-          soft-fail: true
+          soft-fail: false
+          threshold: "0"
           upload-sarif: false
           upload-artifacts: false
