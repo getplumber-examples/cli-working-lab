@@ -13,3 +13,5 @@ jobs:
       - uses: getplumber-examples/cli-working-lab/raw-cache-probe@618-raw-cdn-cache
       # Round 2: its raw 404 was seeded with the headers Plumber sends.
       - uses: getplumber-examples/cli-working-lab/raw-cache-probe2@618-raw-cdn-cache
+      # Round 3: checks the fix (a raw miss on a branch asks the API).
+      - uses: getplumber-examples/cli-working-lab/raw-cache-probe4@618-raw-cdn-cache

