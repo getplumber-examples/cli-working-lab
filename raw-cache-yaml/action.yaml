@@ -1,0 +1,7 @@
+name: raw-cache-yaml
+description: Defined in action.yaml only.
+runs:
+  using: composite
+  steps:
+    - run: echo hello
+      shell: bash

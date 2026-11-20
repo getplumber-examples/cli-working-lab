@@ -1,0 +1,13 @@
+name: raw-cdn-cache probe (plumber#618)
+on: workflow_dispatch
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      # Only an action.yaml: the raw action.yml 404 makes Plumber ask the
+      # contents API, which accepts the token before the probe is read.
+      - uses: getplumber-examples/cli-working-lab/raw-cache-yaml@618-raw-cdn-cache
+      # Its action.yml is pushed after its raw URL has been asked once.
+      - uses: getplumber-examples/cli-working-lab/raw-cache-probe@618-raw-cdn-cache
