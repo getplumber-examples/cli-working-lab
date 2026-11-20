@@ -1,0 +1,7 @@
+name: raw-cache-ttl3
+description: TTL probe.
+runs:
+  using: composite
+  steps:
+    - run: echo hi
+      shell: bash
