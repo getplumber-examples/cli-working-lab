@@ -1,0 +1,8 @@
+version: "2.0"
+extends: default
+github:
+  controls:
+    branchMustBeProtected:
+      enabled: true
+      defaultMustBeProtected: true
+      namePatterns: [main, test/649-bp-classic, test/649-bp-ruleset, test/649-bp-open, test/649-bp-missing]

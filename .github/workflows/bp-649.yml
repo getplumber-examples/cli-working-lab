@@ -1,0 +1,47 @@
+name: bp-649
+on: push
+permissions: {}
+jobs:
+  compare:
+    name: compare (${{ matrix.perms }})
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        perms: [contents-read]
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with: {persist-credentials: false}
+      - uses: actions/checkout@v7.0.1
+        with: {repository: getplumber/plumber, ref: 798fd9f14d3daf22bb8ac8f3f2ea4f5c1cb5172a, path: _main, persist-credentials: false}
+      - uses: actions/checkout@v7.0.1
+        with: {repository: getplumber/plumber, ref: 6eeb12a6071d571853c01f0a9d27048994fa27f7, path: _pr, persist-credentials: false}
+      - uses: actions/setup-go@v7.1.0
+        with: {go-version: '1.26.11', cache: false}
+      - name: Build both binaries
+        run: |
+          (cd _main && go build -o ../plumber-main .)
+          (cd _pr && go build -o ../plumber-pr .)
+          rm -rf _main _pr
+      - name: Analyze with both, default GITHUB_TOKEN
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PLUMBER_NO_UPDATE_CHECK: "1"
+        run: |
+          set +e
+          for cfg in exact wildcard; do
+            for bin in main pr; do
+              extra=""; [ "$bin" = pr ] && extra="--debug=debug-$cfg.md"
+              ./plumber-$bin analyze --config .plumber-$cfg.yaml --controls branchMustBeProtected --print=false --output out-$bin-$cfg.json $extra > log-$bin-$cfg.txt 2>&1
+              echo "$bin $cfg exit=$?"
+              jq -S '.branchProtectionResult' out-$bin-$cfg.json > bp-$bin-$cfg.json
+            done
+            echo "===== $cfg: branchProtectionResult (PR binary)"; cat bp-pr-$cfg.json
+            echo "===== $cfg: diff main vs pr (empty = identical)"; diff bp-main-$cfg.json bp-pr-$cfg.json && echo IDENTICAL
+            echo "===== $cfg: GraphQL and branch requests the PR binary sent"; grep -E "graphql|/branches|/rules|scanned repository" debug-$cfg.md | head -30
+          done
+      - uses: actions/upload-artifact@v7.0.2
+        if: always()
+        with: {name: bp-649, path: "*.json\n*.txt\n*.md"}
