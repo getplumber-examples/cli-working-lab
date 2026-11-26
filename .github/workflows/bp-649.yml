@@ -35,13 +35,15 @@ jobs:
             for bin in main pr; do
               extra=""; [ "$bin" = pr ] && extra="--debug=debug-$cfg.md"
               ./plumber-$bin analyze --config .plumber-$cfg.yaml --controls branchMustBeProtected --print=false --output out-$bin-$cfg.json $extra > log-$bin-$cfg.txt 2>&1
-              echo "$bin $cfg exit=$?"
+              code=$?; echo "$bin $cfg exit=$code"
+              [ -s out-$bin-$cfg.json ] || { echo "::error::$bin $cfg wrote no report"; cat log-$bin-$cfg.txt; exit 1; }
               jq -S '.branchProtectionResult' out-$bin-$cfg.json > bp-$bin-$cfg.json
             done
             echo "===== $cfg: branchProtectionResult (PR binary)"; cat bp-pr-$cfg.json
-            echo "===== $cfg: diff main vs pr (empty = identical)"; diff bp-main-$cfg.json bp-pr-$cfg.json && echo IDENTICAL
+            echo "===== $cfg: diff main vs pr (empty = identical)"; if diff bp-main-$cfg.json bp-pr-$cfg.json; then echo IDENTICAL; else echo "::error::$cfg differs"; fail=1; fi
             echo "===== $cfg: GraphQL and branch requests the PR binary sent"; grep -E "graphql|/branches|/rules|scanned repository" debug-$cfg.md | head -30
           done
+          [ -z "${fail:-}" ]
       - uses: actions/upload-artifact@v7.0.2
         if: always()
         with: {name: bp-649, path: "*.json\n*.txt\n*.md"}

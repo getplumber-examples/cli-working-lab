@@ -1,5 +1,5 @@
 version: "2.0"
-extends: default
+extends: plumber:default
 github:
   controls:
     branchMustBeProtected:
